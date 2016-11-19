@@ -1,0 +1,50 @@
+#+TITLE: Relative voting power by state
+#+PROPERTY: header-args:R  :session *R*
+#+OPTIONS: toc:nil
+#+INFOJS_OPT: view:f toc:f ltoc:f mouse:underline buttons:0 path:http://thomasf.github.io/solarized-css/org-info.min.js
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="http://thomasf.github.io/solarized-css/solarized-light.min.css" />
+
+Data comes from Lawrence Lessig's work:
+https://docs.google.com/spreadsheets/d/1yiMX90Qe8lnFrsorcD2W019bSyJv2v4hLDymlTD4PpQ/
+
+
+#+BEGIN_SRC R  :results output graphics :file voting-power.png :output both :exports graphics :width 800 :height 800
+  library(tidyverse)
+  library(scales)
+
+  vpower_df <- read_csv(url("https://docs.google.com/spreadsheets/d/1yiMX90Qe8lnFrsorcD2W019bSyJv2v4hLDymlTD4PpQ/export?format=csv&id=1yiMX90Qe8lnFrsorcD2W019bSyJv2v4hLDymlTD4PpQ&gid=1127857976"), skip=1)
+
+  vpower_df <- rename(vpower_df, State = X1)
+
+  ## Had a blank row
+  vpower_df <- filter(vpower_df, !(is.na(State)))
+
+  ## Larry did some weird spreadsheet formatting
+  vpower_df$`EC vote per registered voter` <- vpower_df$`EC Votes` / vpower_df$`Registered (2014): US Census, Tab4a,`
+
+  vpower_df$`Population (2016)` <- gsub(",", "", vpower_df$`Population (2016)`) %>% as.numeric()
+
+  ## calculate relative voting power
+  vpower_df$vpower_rel_highest <- vpower_df$`EC vote per registered voter` / max(vpower_df$`EC vote per registered voter`)
+
+  ## plot
+  vpower_plot <- ggplot(vpower_df,
+         aes(x = `EC vote per registered voter` * 100000,
+             y = reorder(State, - `EC vote per registered voter`),
+             label = round(vpower_rel_highest, 2))) +
+      geom_point(aes(size=`Population (2016)`)) +
+      geom_text(hjust = 0, size = 3, nudge_x = 0.01) +
+      ylab("State") +
+      xlab("Electoral college votes per 100k registered voters") +
+      ggtitle("Relative worth of a vote by state\nOne person, one quarter to one votes, depending on place of residence",
+              subtitle = "Annotations show fractional voting power as compared to max\nData compiled by Lawrence Lessig (https://docs.google.com/spreadsheets/d/1yiMX90Qe8lnFrsorcD2W019bSyJv2v4hLDymlTD4PpQ)\nPlot source code at https://github.com/pschmied/votingpower") +
+      scale_size_continuous(labels = comma, breaks = c(1000000, 5000000, 10000000, 20000000, 30000000))
+
+  vpower_plot
+#+END_SRC
+
+#+RESULTS:
+[[file:voting-power.png]]
+
+
+
